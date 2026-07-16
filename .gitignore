@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local agent outputs are mirrored outside the repo by the hook.
+.agent/

@@ -1,0 +1,87 @@
+name: Sync GitHub Stars
+
+on:
+  schedule:
+    # Run daily at 04:00 UTC
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      sync_mode:
+        description: CSV and Google Sheets sync mode
+        required: true
+        default: incremental
+        type: choice
+        options:
+          - incremental
+          - full
+
+concurrency:
+  group: sync-github-stars
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      SYNC_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.sync_mode || 'incremental' }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Fetch Starred Repositories
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "Error: PERSONAL_GITHUB_TOKEN secret is not set."
+            exit 1
+          fi
+          python fetch-stars-1.py \
+            --output github_starred_repos.csv \
+            --mode "$SYNC_MODE"
+
+      - name: Sync to Google Sheets
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+          SPREADSHEET_ID: ${{ vars.SPREADSHEET_ID }}
+        run: |
+          if [ -z "$GOOGLE_SERVICE_ACCOUNT_KEY" ]; then
+            echo "Error: GOOGLE_SERVICE_ACCOUNT_KEY secret is not set."
+            exit 1
+          fi
+          if [ -z "$SPREADSHEET_ID" ]; then
+            echo "Error: SPREADSHEET_ID repository variable is not set."
+            exit 1
+          fi
+          python sync_to_sheets.py \
+            --csv github_starred_repos.csv \
+            --spreadsheet-id "$SPREADSHEET_ID" \
+            --sheet-name "Sheet1" \
+            --mode "$SYNC_MODE"
+
+      - name: Commit and Push CSV changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add github_starred_repos.csv
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: auto-update github starred repositories CSV"
+            git push
+          fi
