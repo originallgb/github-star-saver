@@ -169,14 +169,16 @@ def get_sheet_properties(spreadsheets, spreadsheet_id, sheet_name):
 
 def incremental_requests(spreadsheets, spreadsheet_id, sheet_name, sheet_id, values):
     width = len(COLUMNS)
-    checkpoint_range = (
-        f"{a1_sheet_name(sheet_name)}!A1:{column_letter(width)}2"
+    checkpoint_range = f"{a1_sheet_name(sheet_name)}!A1:{column_letter(width)}2"
+    response = (
+        spreadsheets.values()
+        .get(
+            spreadsheetId=spreadsheet_id,
+            range=checkpoint_range,
+            majorDimension="ROWS",
+        )
+        .execute()
     )
-    response = spreadsheets.values().get(
-        spreadsheetId=spreadsheet_id,
-        range=checkpoint_range,
-        majorDimension="ROWS",
-    ).execute()
     sheet_values = response.get("values", [])
 
     if not sheet_values or normalize_row(sheet_values[0], width) != COLUMNS:
@@ -197,7 +199,9 @@ def incremental_requests(spreadsheets, spreadsheet_id, sheet_name, sheet_id, val
         )
 
     matching_indexes = [
-        index for index, row in enumerate(values[1:]) if checkpoint(row) == top_checkpoint
+        index
+        for index, row in enumerate(values[1:])
+        if checkpoint(row) == top_checkpoint
     ]
     if len(matching_indexes) != 1:
         raise ValueError(

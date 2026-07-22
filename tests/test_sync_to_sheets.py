@@ -19,7 +19,7 @@ sys.modules.setdefault("googleapiclient", googleapiclient)
 sys.modules.setdefault("googleapiclient.discovery", googleapiclient.discovery)
 sys.modules.setdefault("googleapiclient.errors", googleapiclient.errors)
 
-import sync_to_sheets as syncer
+import sync_to_sheets as syncer  # noqa: E402
 
 
 def make_row(starred_at, repo_full_name):
@@ -88,17 +88,13 @@ class ParseArgsTests(unittest.TestCase):
         self.assertEqual(args.mode, "incremental")
 
     def test_full_mode_is_available(self):
-        args = syncer.parse_args(
-            ["--spreadsheet-id", "spreadsheet", "--mode", "full"]
-        )
+        args = syncer.parse_args(["--spreadsheet-id", "spreadsheet", "--mode", "full"])
         self.assertEqual(args.mode, "full")
 
 
 class WorkflowContractTests(unittest.TestCase):
     def test_one_sync_mode_is_passed_to_fetch_and_sheet_steps(self):
-        workflow = Path(".github/workflows/sync-stars.yml").read_text(
-            encoding="utf-8"
-        )
+        workflow = Path(".github/workflows/sync-stars.yml").read_text(encoding="utf-8")
 
         self.assertIn("sync_mode:", workflow)
         self.assertIn("inputs.sync_mode", workflow)
@@ -239,9 +235,7 @@ class FullSyncTests(unittest.TestCase):
         values = [syncer.COLUMNS, make_row("2026-07-16", "owner/repo")]
         spreadsheets = FakeSpreadsheets([], row_count=1, column_count=2)
 
-        syncer.sync(
-            FakeService(spreadsheets), "spreadsheet", "Sheet1", values, "full"
-        )
+        syncer.sync(FakeService(spreadsheets), "spreadsheet", "Sheet1", values, "full")
 
         requests = spreadsheets.batch_calls[0]["body"]["requests"]
         self.assertEqual(requests[0]["appendDimension"]["dimension"], "ROWS")

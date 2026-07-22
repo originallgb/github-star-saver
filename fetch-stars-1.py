@@ -197,7 +197,9 @@ def run_gh_api(cmd, retry=6):
     for _ in range(retry):
         proc = subprocess.run(cmd, capture_output=True, text=True)
         if proc.returncode != 0:
-            last_err = RuntimeError((proc.stderr or "").strip() or f"gh api failed: {proc.returncode}")
+            last_err = RuntimeError(
+                (proc.stderr or "").strip() or f"gh api failed: {proc.returncode}"
+            )
             time.sleep(backoff)
             backoff = min(backoff * 2.0, 60.0)
             continue
@@ -321,7 +323,9 @@ def fetch_stars_graphql(topic_limit, checkpoint=None):
         except Exception as exc:
             raise GraphQLFetchError(str(exc), len(rows)) from exc
 
-        starred = (((data.get("data") or {}).get("viewer") or {}).get("starredRepositories")) or {}
+        starred = (
+            ((data.get("data") or {}).get("viewer") or {}).get("starredRepositories")
+        ) or {}
         total_count = starred.get("totalCount", total_count)
         edges = starred.get("edges") or []
         checkpoint_found = False
@@ -340,9 +344,16 @@ def fetch_stars_graphql(topic_limit, checkpoint=None):
             rows.append(row)
 
         page_info = starred.get("pageInfo") or {}
-        final_rate_limit = ((data.get("data") or {}).get("rateLimit")) or final_rate_limit
-        fetched_text = f"{len(rows)}/{total_count}" if total_count is not None else str(len(rows))
-        print(f"GraphQL page {page_num}: fetched {len(edges)} repos ({fetched_text})", flush=True)
+        final_rate_limit = (
+            (data.get("data") or {}).get("rateLimit")
+        ) or final_rate_limit
+        fetched_text = (
+            f"{len(rows)}/{total_count}" if total_count is not None else str(len(rows))
+        )
+        print(
+            f"GraphQL page {page_num}: fetched {len(edges)} repos ({fetched_text})",
+            flush=True,
+        )
 
         if checkpoint_found:
             break
@@ -355,7 +366,9 @@ def fetch_stars_graphql(topic_limit, checkpoint=None):
             break
         cursor = page_info.get("endCursor")
         if not cursor:
-            raise RuntimeError("GraphQL pagination expected an endCursor but none was returned")
+            raise RuntimeError(
+                "GraphQL pagination expected an endCursor but none was returned"
+            )
 
     return rows, final_rate_limit
 
@@ -368,7 +381,9 @@ def write_csv_atomic(rows, output):
     output = os.path.abspath(output)
     output_dir = os.path.dirname(output)
     os.makedirs(output_dir, exist_ok=True)
-    fd, temporary = tempfile.mkstemp(prefix=f".{os.path.basename(output)}.", dir=output_dir)
+    fd, temporary = tempfile.mkstemp(
+        prefix=f".{os.path.basename(output)}.", dir=output_dir
+    )
     try:
         with os.fdopen(fd, "w", newline="", encoding="utf-8") as file:
             writer = csv.DictWriter(file, fieldnames=COLUMNS, quoting=csv.QUOTE_MINIMAL)
@@ -404,7 +419,9 @@ def print_summary(rows, output, rate_limit=None, wrote=True):
 
 
 def incremental_csv_error(message):
-    return ValueError(f"Invalid incremental CSV: {message}; run again with --mode full.")
+    return ValueError(
+        f"Invalid incremental CSV: {message}; run again with --mode full."
+    )
 
 
 def read_incremental_csv(path):
@@ -433,7 +450,9 @@ def read_incremental_csv(path):
     previous_dt = None
     for line_number, row in enumerate(rows, start=2):
         if set(row) != set(COLUMNS) or None in row.values():
-            raise incremental_csv_error(f"row {line_number} does not match the CSV header")
+            raise incremental_csv_error(
+                f"row {line_number} does not match the CSV header"
+            )
         repo_full_name = row["repo_full_name"]
         if not repo_full_name:
             raise incremental_csv_error(f"row {line_number} has no repo_full_name")
@@ -454,6 +473,7 @@ def read_incremental_csv(path):
 
     first = rows[0]
     return rows, (first["starred_at"], first["repo_full_name"])
+
 
 def main():
     args = parse_args()

@@ -14,13 +14,21 @@ from pathlib import Path
 
 DEFAULT_CONFIG = ".agent-commit-hook.json"
 SECRET_PATTERNS = [
-    re.compile(r"(token|secret|password|passwd|authorization|cookie|api[_-]?key)=([^\\s]+)", re.I),
+    re.compile(
+        r"(token|secret|password|passwd|authorization|cookie|api[_-]?key)=([^\\s]+)",
+        re.I,
+    ),
     re.compile(r"(https?://)([^/@\\s:]+):([^/@\\s]+)@", re.I),
 ]
 
 
 def utc_now():
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def run(cmd, cwd, timeout=12):
@@ -57,9 +65,14 @@ def redact(value):
         return value
     redacted = value
     for pattern in SECRET_PATTERNS:
-        redacted = pattern.sub(lambda m: f"{m.group(1)}[REDACTED]@"
-                               if m.re.pattern.startswith("(https?")
-                               else f"{m.group(1)}=[REDACTED]", redacted)
+        redacted = pattern.sub(
+            lambda m: (
+                f"{m.group(1)}[REDACTED]@"
+                if m.re.pattern.startswith("(https?")
+                else f"{m.group(1)}=[REDACTED]"
+            ),
+            redacted,
+        )
     return redacted
 
 
@@ -95,8 +108,18 @@ def matches_any(rel_path, patterns):
 
 
 def iter_included_files(repo, config):
-    include_globs = config.get("include_globs") or ["README.md", "*.py", "tools/*.py", ".githooks/*"]
-    exclude_globs = config.get("exclude_globs") or [".git/**", "__pycache__/**", ".agent/**", "*.pyc"]
+    include_globs = config.get("include_globs") or [
+        "README.md",
+        "*.py",
+        "tools/*.py",
+        ".githooks/*",
+    ]
+    exclude_globs = config.get("exclude_globs") or [
+        ".git/**",
+        "__pycache__/**",
+        ".agent/**",
+        "*.pyc",
+    ]
 
     candidates = []
     for pattern in include_globs:
@@ -134,7 +157,9 @@ def capture_file_snapshots(repo, config):
         }
         if item["captured_text"]:
             try:
-                item["text"] = redact(path.read_text(encoding="utf-8", errors="replace"))
+                item["text"] = redact(
+                    path.read_text(encoding="utf-8", errors="replace")
+                )
             except OSError as exc:
                 item["captured_text"] = False
                 item["read_error"] = str(exc)
@@ -161,11 +186,15 @@ def capture_globbed_text(repo, globs, max_bytes):
                 "captured_text": stat.st_size <= max_bytes,
             }
             if item["captured_text"]:
-                item["text"] = redact(path.read_text(encoding="utf-8", errors="replace"))
+                item["text"] = redact(
+                    path.read_text(encoding="utf-8", errors="replace")
+                )
             else:
                 with path.open("rb") as file:
                     file.seek(max(0, stat.st_size - max_bytes))
-                    item["tail_text"] = redact(file.read().decode("utf-8", errors="replace"))
+                    item["tail_text"] = redact(
+                        file.read().decode("utf-8", errors="replace")
+                    )
                 item["captured_tail_bytes"] = max_bytes
             captured.append(item)
     return captured
@@ -236,7 +265,9 @@ def capture_environment():
         "PYTHONPATH",
         "PATH",
     ]
-    return {key: redact(os.environ.get(key, "")) for key in allowlist if os.environ.get(key)}
+    return {
+        key: redact(os.environ.get(key, "")) for key in allowlist if os.environ.get(key)
+    }
 
 
 def write_json(path, payload):
@@ -309,7 +340,9 @@ def main():
 
     memory_dir_str = config.get("memory_dir", str(repo / ".agent-memory"))
     memory_dir = ensure_dir(Path(memory_dir_str).expanduser())
-    repo_report_dir = ensure_dir(repo / config.get("repo_report_dir", ".agent/commit-reports"))
+    repo_report_dir = ensure_dir(
+        repo / config.get("repo_report_dir", ".agent/commit-reports")
+    )
 
     commands = {
         "commit": run(["git", "rev-parse", "HEAD"], repo),
@@ -318,9 +351,25 @@ def main():
         "subject": run(["git", "log", "-1", "--pretty=%s"], repo),
         "author": run(["git", "log", "-1", "--pretty=%an <%ae>"], repo),
         "status": run(["git", "status", "--short"], repo),
-        "name_status": run(["git", "diff-tree", "--root", "--no-commit-id", "--name-status", "-r", "HEAD"], repo),
-        "numstat": run(["git", "diff-tree", "--root", "--no-commit-id", "--numstat", "-r", "HEAD"], repo),
-        "shortstat": run(["git", "show", "--stat", "--oneline", "--no-renames", "HEAD"], repo),
+        "name_status": run(
+            [
+                "git",
+                "diff-tree",
+                "--root",
+                "--no-commit-id",
+                "--name-status",
+                "-r",
+                "HEAD",
+            ],
+            repo,
+        ),
+        "numstat": run(
+            ["git", "diff-tree", "--root", "--no-commit-id", "--numstat", "-r", "HEAD"],
+            repo,
+        ),
+        "shortstat": run(
+            ["git", "show", "--stat", "--oneline", "--no-renames", "HEAD"], repo
+        ),
         "remotes": run(["git", "remote", "-v"], repo),
     }
 
@@ -329,14 +378,24 @@ def main():
     if config.get("capture_gh_status", True):
         commands["gh_auth_status"] = run(["gh", "auth", "status"], repo, timeout=8)
 
-    file_snapshots = capture_file_snapshots(repo, config) if config.get("capture_repo_snapshot", True) else []
+    file_snapshots = (
+        capture_file_snapshots(repo, config)
+        if config.get("capture_repo_snapshot", True)
+        else []
+    )
     session_files = (
-        capture_globbed_text(repo, config.get("session_globs", []), int(config.get("max_file_bytes", 120000)))
+        capture_globbed_text(
+            repo,
+            config.get("session_globs", []),
+            int(config.get("max_file_bytes", 120000)),
+        )
         if config.get("capture_sessions", True)
         else []
     )
     log_files = (
-        capture_globbed_text(repo, config.get("log_globs", []), int(config.get("max_log_bytes", 120000)))
+        capture_globbed_text(
+            repo, config.get("log_globs", []), int(config.get("max_log_bytes", 120000))
+        )
         if config.get("capture_logs", True)
         else []
     )
@@ -373,7 +432,9 @@ def main():
             "platform": platform.platform(),
             "argv": sys.argv,
         },
-        "environment": capture_environment() if config.get("capture_environment", True) else {},
+        "environment": capture_environment()
+        if config.get("capture_environment", True)
+        else {},
         "context_files": file_snapshots,
         "session_files": session_files,
         "log_files": log_files,
