@@ -249,5 +249,17 @@ class FullSyncTests(unittest.TestCase):
         self.assertIn("updateCells", requests[2])
 
 
+def tearDownModule():
+    for name in [
+        "google",
+        "google.oauth2",
+        "google.oauth2.service_account",
+        "googleapiclient",
+        "googleapiclient.discovery",
+        "googleapiclient.errors",
+    ]:
+        sys.modules.pop(name, None)
+
+
 if __name__ == "__main__":
     unittest.main()

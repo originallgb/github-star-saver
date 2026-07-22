@@ -102,6 +102,22 @@ required secrets and `SPREADSHEET_ID` variable, run the workflow manually in
 `full` mode once to initialize both the CSV and Sheet. Scheduled incremental
 runs will fail safely until that initialization succeeds.
 
+## Personal Knowledge Base & Agentic Context
+
+Exporting and syncing your starred repositories serves two primary purposes beyond simple backup:
+
+### 1. Personal Knowledge Base (PKB) Context
+Your starred repositories represent a curated, high-quality stream of tools, frameworks, and reference implementations that you have personally evaluated or found interesting. By keeping this list in a structured format (like `github_starred_repos.csv` or Google Sheets), you can:
+- Integrate this list directly with PKB tools like **Obsidian** or **Logseq** (using local CSV import plugins or APIs).
+- Search and query your curated favorites locally without relying on GitHub's web interface or search API.
+- Use topics and primary languages to automatically organize, tag, and cluster technical resources in your personal notes.
+
+### 2. Agentic Context Layer
+When working with agentic coding assistants (such as Antigravity or local developer agents), a major hurdle is "context bootstrapping." By providing your structured star database:
+- The agent can immediately read the CSV to understand your technical stack, favorite developer tools, and preferred dependencies.
+- It acts as a customized developer profile, allowing the agent to recommend technologies, libraries, or architectures that align with tools you already trust.
+- In multi-agent systems, agents can query this local database as a custom knowledge tool to discover how you solved similar problems or what packages you prefer for specific tasks.
+
 ## Automated Sync with GitHub Actions
 
 The repository is configured with a GitHub Actions workflow (`.github/workflows/sync-stars.yml`) that automatically runs daily to fetch your latest starred repositories, incrementally sync them to Google Sheets, and commit the updated `github_starred_repos.csv` back to the repository. Scheduled runs always use incremental mode. A manual workflow run offers an `incremental` or `full` choice and passes that same mode to both the CSV fetch and Sheet sync. Select `full` to rebuild both artifacts for initialization or recovery. Concurrency protection prevents overlapping sync runs.
